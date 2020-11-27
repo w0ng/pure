@@ -142,7 +142,14 @@ prompt_pure_preprompt_render() {
 	# Git branch and dirty status info.
 	typeset -gA prompt_pure_vcs_info
 	if [[ -n $prompt_pure_vcs_info[branch] ]]; then
-		preprompt_parts+=("%F{$git_color}"'${prompt_pure_vcs_info[branch]}'"%F{$git_dirty_color}"'${prompt_pure_git_dirty}%f')
+		if [[ -n $prompt_pure_git_dirty_parts ]]; then
+			preprompt_parts+=("%F{$git_color}"'${prompt_pure_vcs_info[branch]}%f')
+			for key value in "${(@kv)prompt_pure_git_dirty_parts}"; do
+				preprompt_parts+=("%F{$prompt_pure_colors[git:$key]}""${value}%f")
+			done
+		else
+			preprompt_parts+=("%F{$git_color}"'${prompt_pure_vcs_info[branch]}'"%F{$git_dirty_color}"'${prompt_pure_git_dirty}%f')
+		fi
 	fi
 	# Git action (for example, merge).
 	if [[ -n $prompt_pure_vcs_info[action] ]]; then
@@ -299,6 +306,17 @@ prompt_pure_async_git_dirty() {
 	return $?
 }
 
+# Used to render multiple individual git status symbol parts instead of a single combined symbol
+prompt_pure_async_git_dirty_parts() {
+	setopt localoptions noshwordsplit
+	local untracked_git_mode=$(command git config --get status.showUntrackedFiles)
+	if [[ "$untracked_git_mode" != 'no' ]]; then
+		untracked_git_mode='normal'
+	fi
+
+	GIT_OPTIONAL_LOCKS=0 command git status --porcelain --ignore-submodules -u${untracked_git_mode}
+}
+
 prompt_pure_async_git_fetch() {
 	setopt localoptions noshwordsplit
 
@@ -413,6 +431,7 @@ prompt_pure_async_tasks() {
 
 		# Reset Git preprompt variables, switching working tree.
 		unset prompt_pure_git_dirty
+		unset prompt_pure_git_dirty_parts
 		unset prompt_pure_git_last_dirty_check_timestamp
 		unset prompt_pure_git_arrows
 		unset prompt_pure_git_stash
@@ -455,7 +474,11 @@ prompt_pure_async_refresh() {
 	if (( time_since_last_dirty_check > ${PURE_GIT_DELAY_DIRTY_CHECK:-1800} )); then
 		unset prompt_pure_git_last_dirty_check_timestamp
 		# Check check if there is anything to pull.
-		async_job "prompt_pure" prompt_pure_async_git_dirty ${PURE_GIT_UNTRACKED_DIRTY:-1}
+		if (( ${PURE_GIT_COMBINED_DIRTY:-1} )); then
+			async_job "prompt_pure" prompt_pure_async_git_dirty ${PURE_GIT_UNTRACKED_DIRTY:-1}
+		else
+			async_job "prompt_pure" prompt_pure_async_git_dirty_parts
+		fi
 	fi
 
 	# If stash is enabled, tell async worker to count stashes
@@ -557,6 +580,47 @@ prompt_pure_async_callback() {
 			fi
 
 			[[ $prev_dirty != $prompt_pure_git_dirty ]] && do_render=1
+
+			# When `prompt_pure_git_last_dirty_check_timestamp` is set, the Git info is displayed
+			# in a different color. To distinguish between a "fresh" and a "cached" result, the
+			# preprompt is rendered before setting this variable. Thus, only upon the next
+			# rendering of the preprompt will the result appear in a different color.
+			(( $exec_time > 5 )) && prompt_pure_git_last_dirty_check_timestamp=$EPOCHSECONDS
+			;;
+		prompt_pure_async_git_dirty_parts)
+			local -A prev_dirty_parts=(${(@kv)prompt_pure_git_dirty_parts})
+			local added=0
+			local deleted=0
+			local modified=0
+			local renamed=0
+			local unmerged=0
+			local untracked=0
+
+			if [[ -z $output ]]; then
+				unset prompt_pure_git_dirty_parts
+			else
+				typeset -gA prompt_pure_git_dirty_parts=()
+
+				# Parse current git status:
+				# https://github.com/sorin-ionescu/prezto/blob/a132c1007a8aa602218383c7a9952f9c6b9c2e0d/modules/git/functions/git-info#L355-L367
+				while IFS=$'\n' read line; do
+					[[ "$line" == ([ACDMT][\ MT]|[ACMT]D)\ * ]] && (( added++ ))
+					[[ "$line" == [\ ACMRT]D\ * ]] && (( deleted++ ))
+					[[ "$line" == ?[MT]\ * ]] && (( modified++ ))
+					[[ "$line" == R?\ * ]] && (( renamed++ ))
+					[[ "$line" == (AA|DD|U?|?U)\ * ]] && (( unmerged++ ))
+					[[ "$line" == \?\?\ * ]] && (( untracked++ ))
+				done <<< $output
+
+				(( added > 0 )) && prompt_pure_git_dirty_parts[added]=${PURE_GIT_ADDED_SYMBOL:-+}
+				(( deleted > 0 )) && prompt_pure_git_dirty_parts[deleted]=${PURE_GIT_DELETED_SYMBOL:-✘}
+				(( modified > 0 )) && prompt_pure_git_dirty_parts[modified]=${PURE_GIT_MODIFIED_SYMBOL:-!}
+				(( renamed > 0 )) && prompt_pure_git_dirty_parts[renamed]=${PURE_GIT_RENAMED_SYMBOL:-»}
+				(( unmerged > 0 )) && prompt_pure_git_dirty_parts[unmerged]=${PURE_GIT_UNMERGED_SYMBOL:-=}
+				(( untracked > 0 )) && prompt_pure_git_dirty_parts[untracked]=${PURE_GIT_UNTRACKED_SYMBOL:-?}
+			fi
+
+			[[ $prev_dirty_parts != $prompt_pure_git_dirty_parts ]] && do_render=1
 
 			# When `prompt_pure_git_last_dirty_check_timestamp` is set, the Git info is displayed
 			# in a different color. To distinguish between a "fresh" and a "cached" result, the
@@ -795,6 +859,12 @@ prompt_pure_setup() {
 		execution_time       yellow
 		git:arrow            cyan
 		git:stash            cyan
+		git:added            cyan
+		git:deleted          cyan
+		git:modified         cyan
+		git:renamed          cyan
+		git:unmerged         cyan
+		git:untracked        cyan
 		git:branch           242
 		git:branch:cached    red
 		git:action           yellow

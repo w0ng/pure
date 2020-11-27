@@ -89,12 +89,19 @@ prompt pure
 | **`PURE_CMD_MAX_EXEC_TIME`**     | The max execution time of a process before its run time is shown when it exits.                | `5` seconds    |
 | **`PURE_GIT_PULL=0`**            | Prevents Pure from checking whether the current Git remote has been updated.                   |                |
 | **`PURE_GIT_UNTRACKED_DIRTY=0`** | Do not include untracked files in dirtiness check. Mostly useful on large repos (like WebKit). |                |
+| **`PURE_GIT_COMBINED_DIRTY=0`**  | Use individual symbols to repesent dirty git state instead of a single combined symbol.        |                |
 | **`PURE_GIT_DELAY_DIRTY_CHECK`** | Time in seconds to delay git dirty checking when `git status` takes > 5 seconds.               | `1800` seconds |
 | **`PURE_PROMPT_SYMBOL`**         | Defines the prompt symbol.                                                                     | `❯`            |
 | **`PURE_PROMPT_VICMD_SYMBOL`**   | Defines the prompt symbol used when the `vicmd` keymap is active (VI-mode).                    | `❮`            |
 | **`PURE_GIT_DOWN_ARROW`**        | Defines the git down arrow symbol.                                                             | `⇣`            |
 | **`PURE_GIT_UP_ARROW`**          | Defines the git up arrow symbol.                                                               | `⇡`            |
 | **`PURE_GIT_STASH_SYMBOL`**      | Defines the git stash symbol.                                                                  | `≡`            |
+| **`PURE_GIT_ADDED_SYMBOL`**      | Defines the git added symbol. (requires `PURE_GIT_COMBINED_DIRTY=0`)                           | `+`            |
+| **`PURE_GIT_DELETED_SYMBOL`**    | Defines the git deleted symbol. (requires `PURE_GIT_COMBINED_DIRTY=0`)                         | `✘`            |
+| **`PURE_GIT_MODIFIED_SYMBOL`**   | Defines the git modified symbol. (requires `PURE_GIT_COMBINED_DIRTY=0`)                        | `!`            |
+| **`PURE_GIT_RENAMED_SYMBOL`**    | Defines the git renamed symbol. (requires `PURE_GIT_COMBINED_DIRTY=0`)                         | `»`            |
+| **`PURE_GIT_UNMERGED_SYMBOL`**   | Defines the git unmerged symbol. (requires `PURE_GIT_COMBINED_DIRTY=0`)                        | `=`            |
+| **`PURE_GIT_UNTRACKED_SYMBOL`**  | Defines the git untracked symbol. (requires `PURE_GIT_COMBINED_DIRTY=0`)                       | `?`            |
 
 ## Zstyle options
 
@@ -117,6 +124,12 @@ Colors can be changed by using [`zstyle`](http://zsh.sourceforge.net/Doc/Release
 - `execution_time` (yellow) - The execution time of the last command when exceeding `PURE_CMD_MAX_EXEC_TIME`.
 - `git:arrow` (cyan) - For `PURE_GIT_UP_ARROW` and `PURE_GIT_DOWN_ARROW`.
 - `git:stash` (cyan) - For `PURE_GIT_STASH_SYMBOL`.
+- `git:added` (cyan) - For `PURE_GIT_ADDED_SYMBOL`.
+- `git:deleted` (cyan) - For `PURE_GIT_DELETED_SYMBOL`.
+- `git:modified` (cyan) - For `PURE_GIT_MODIFIED_SYMBOL`.
+- `git:renamed` (cyan) - For `PURE_GIT_RENAMED_SYMBOL`.
+- `git:unmerged` (cyan) - For `PURE_GIT_UNMERGED_SYMBOL`.
+- `git:untracked` (cyan) - For `PURE_GIT_UNTRACKED_SYMBOL`.
 - `git:branch` (242) - The name of the current branch when in a Git repository.
 - `git:branch:cached` (red) - The name of the current branch when the data isn't fresh.
 - `git:action` (242) - The current action in progress (cherry-pick, rebase, etc.) when in a Git repository.
